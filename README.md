@@ -1,4 +1,4 @@
-# ShareMyFood - Connecting Hearts to End Hunger
+# ShareMyFood - Connecting Hearts to End Hunger🍲
 
 ShareMyFood is a platform designed to solve the hunger problem by connecting users with local NGOs. The platform enables people to donate surplus food, ensuring that it reaches those in need, reducing food waste, and making a positive impact in the fight against hunger.
 
