@@ -1,16 +1,15 @@
-# 🔧 Google Solution Challenge 2025 - Project Repository
+# ShareMyFood - Connecting Hearts to End Hunger
 
-## 🔍 Project Overview
-Welcome to our submission for the **Google Solution Challenge 2025**! This project aims to provide an innovative solution that addresses real-world problems and contributes to the Sustainable Development Goals (SDGs) defined by the United Nations.
+ShareMyFood is a platform designed to solve the hunger problem by connecting users with local NGOs. The platform enables people to donate surplus food, ensuring that it reaches those in need, reducing food waste, and making a positive impact in the fight against hunger.
 
-Our solution leverages cutting-edge web technologies to deliver a seamless and impactful user experience, ensuring accessibility, efficiency, and scalability.
+---
 
-## ✨ Features
-- **💡 User-friendly Interface:** Built with React.js for a responsive and interactive front end.
-- **🚀 Efficient Backend:** Powered by Express.js to handle server-side operations smoothly.
-- **📊 Scalable Architecture:** Ensures performance under varying loads.
-- **🔐 API Integration:** Secure and robust API design for seamless communication.
-- **⏳ Real-time Data Handling:** Optimized data management for fast response times.
+## Features
+
+- **Seamless Connections:** Easily connect with nearby NGOs for quick and efficient food donations.
+- **Real-Time Tracking:** Track the progress of your donation and see how it helps in alleviating hunger.
+- **Sustainability Focus:** Reduce food waste and contribute to sustainability by donating surplus food.
+- **Community Impact:** Be part of a community working to end hunger and improve lives.
 
 ## 💻 Tech Stack
 - **Frontend:** React.js
