@@ -1,13 +1,10 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const path = require("path");
 const db = require("./db");
 require("dotenv").config();
-
 const app = express();
 const allowedOrigins = ['http://localhost:3000'];
-const API_KEY = process.env.API_KEY; // Secure key from .env
 
 // Middleware to check host
 app.use(cors({
@@ -22,26 +19,12 @@ app.use(cors({
 
 app.use(bodyParser.json());
 
-// Middleware to check API Key
-app.use((req, res, next) => {
-  const apiKey = req.headers['x-api-key'] || req.query.api_key;
-  if (apiKey !== API_KEY) {
-    return res.status(403).json({ message: "Forbidden: Invalid API Key" });
-  }
-  next();
-});
+const autentication = require("./autentication");
 
-// Import route files
-const exampleRoute = require("./example");
-
-// Use routes
-app.use("/example", exampleRoute);
-app.use("/images", express.static(path.join(__dirname, "./images")));
-app.use("/profile", express.static(path.join(__dirname, "./profile")));
+app.use("/auto", autentication);
 
 
-// Start the server
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
