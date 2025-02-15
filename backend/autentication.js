@@ -8,6 +8,9 @@ require('dotenv').config();
 const cloudinary = require('./config');
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+require("dotenv").config();
 //verfy token
 const verifyToken = (req, res, next) => {
   const token = req.headers['authorization'];
@@ -31,16 +34,15 @@ const verifyToken = (req, res, next) => {
       }
       return res.status(401).json({ message: 'Unauthorized', error: err });
     }
-    
+
     req.user = decoded; // Attach the decoded payload to the request object
     next();
   });
 };
 
 
-
 // Sign Up API
-//curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"Tushar Saini\",\"email\":\"tushar.com\",\"phone\":\"1234567890\",\"password\":\"12345678\",\"usertype\":\"user\"}"
+//curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"Tushar Saini\",\"email\":\"tusharsaini.in@gmail.com\",\"phone\":\"1234567890\",\"password\":\"12345678\",\"usertype\":\"user\"}"
 //curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"John Doe\",\"email\":\"johndoe@example.com\",\"phone\":\"1234567890\",\"password\":\"password123\",\"usertype\":\"ngo\"}"
 router.post('/signup', async (req, res) => {
   const { name, email, phone, password, usertype } = req.body;
@@ -171,7 +173,7 @@ router.post('/login', async (req, res) => {
           return res.status(200).json({
             message: 'Login successful',
             userId: user.id,
-            userType:user.usertype,
+            userType: user.usertype,
             token
           });
         }
@@ -222,6 +224,222 @@ router.get('/profile', verifyToken, (req, res) => {
   });
 });
 
+//forgat password
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.email,
+    pass: process.env.pass
+  }
+});
+
+// Generate OTP
+function generateOTP() {
+  return crypto.randomInt(100000, 999999).toString();
+}
+
+// Function to check email in ngo or users table
+function checkEmailInTables(email) {
+  return new Promise((resolve, reject) => {
+    const ngoQuery = 'SELECT id FROM ngo WHERE email = ?';
+    const usersQuery = 'SELECT id FROM users WHERE email = ?';
+
+    db.query(ngoQuery, [email], (ngoErr, ngoResults) => {
+      if (ngoErr) return reject(ngoErr);
+
+      if (ngoResults.length > 0) {
+        return resolve({ table: 'ngo', id: ngoResults[0].id });
+      }
+
+      db.query(usersQuery, [email], (usersErr, usersResults) => {
+        if (usersErr) return reject(usersErr);
+
+        if (usersResults.length > 0) {
+          return resolve({ table: 'users', id: usersResults[0].id });
+        }
+
+        resolve(null); // Email not found
+      });
+    });
+  });
+}
+
+//curl -X POST "http://localhost:4000/auto/send-otp" -H "Content-Type: application/json" -d "{\"email\":\"tusharsaini.in@gmail.com\"}"
+
+router.post('/send-otp', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  try {
+    // Check if email exists
+    const emailExists = await checkEmailInTables(email);
+    if (!emailExists) {
+      return res.status(404).json({ error: 'Email not found in ngo or users table' });
+    }
+
+    const otp = generateOTP();
+
+    // Save OTP to Database
+    const query = `
+      INSERT INTO otp_verification (email, otp) 
+      VALUES (?, ?) 
+      ON DUPLICATE KEY UPDATE otp = ?, created_at = CURRENT_TIMESTAMP
+    `;
+    db.query(query, [email, otp, otp], (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error', details: err.message });
+      }
+
+      // Send Email with OTP
+      const mailOptions = {
+        from: process.env.email,
+        to: email,
+        subject: 'SheremyFood OTP Verification',
+        html: `
+          <html>
+            <head>
+              <style>
+                body {
+                  font-family: Arial, sans-serif;
+                  background-color: #f4f4f4;
+                  margin: 0;
+                  padding: 0;
+                }
+                .container {
+                  width: 100%;
+                  max-width: 600px;
+                  margin: 0 auto;
+                  padding: 20px;
+                  background-color: #ffffff;
+                  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                  text-align: center;
+                  color: #333333;
+                }
+                .otp {
+                  font-size: 24px;
+                  font-weight: bold;
+                  color: #4CAF50;
+                  text-align: center;
+                  margin: 20px 0;
+                }
+                .warning {
+                  font-size: 16px;
+                  font-weight: bold;
+                  color: #FF6347; /* Tomato color for warning */
+                  background-color: #FFF8E1; /* Light yellow background */
+                  padding: 10px;
+                  border-radius: 5px;
+                  text-align: center;
+                  margin-bottom: 20px;
+                }
+                .footer {
+                  text-align: center;
+                  font-size: 12px;
+                  color: #777777;
+                  margin-top: 40px;
+                }
+                .footer a {
+                  color: #4CAF50;
+                  text-decoration: none;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1>Your OTP for SheremyFood password reset</h1>
+                </div>
+                <div class="warning">
+                  <strong>Warning:</strong> This OTP is time-sensitive. Please use it within 5 minutes. <br>
+                  <strong>Do not share this OTP with anyone.</strong> If someone else has access to this OTP, they could change your password.
+                </div>
+                <div class="otp">
+                  ${otp}
+                </div>
+                <div class="footer">
+                  <p>It is valid for 5 minutes.</p>
+                  <p>If you did not request a password reset, please ignore this email.</p>
+                  <p>If you have any questions, please visit our <a href="https://www.sheremyfood.com/faq" target="_blank">FAQ page</a> or contact support.</p>
+                  <p>Contact Support: <a href="mailto:support@sheremyfood.com">support@sheremyfood.com</a></p>
+                </div>
+              </div>
+            </body>
+          </html>
+        `
+      };
+      
+
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          return res.status(500).json({ error: 'Error sending email', details: error.message });
+        }
+        res.status(200).json({ message: 'OTP sent successfully' });
+      });
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error checking email existence', details: error.message });
+  }
+});
+
+
+//curl -X POST "http://localhost:4000/auto/verify-otp-and-reset-password" -H "Content-Type: application/json" -d "{\"email\":\"tusharsaini.in@gmail.com\", \"otp\":\"722896\", \"newPassword\":\"12345678\"}"
+
+router.post('/verify-otp-and-reset-password', async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ error: 'Email, OTP, and new password are required' });
+  }
+
+  // Check if the new password is at least 8 characters long
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters long' });
+  }
+
+  try {
+    // Check OTP validity
+    const otpQuery = `
+      SELECT * FROM otp_verification 
+      WHERE email = ? AND otp = ? 
+      AND created_at >= NOW() - INTERVAL 5 MINUTE
+    `;
+    db.query(otpQuery, [email, otp], async (err, results) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error', details: err.message });
+      }
+
+      if (results.length === 0) {
+        return res.status(400).json({ error: 'Invalid or expired OTP' });
+      }
+
+      // Check email in tables
+      const emailResult = await checkEmailInTables(email);
+      if (!emailResult) {
+        return res.status(404).json({ error: 'Email not found in ngo or users table' });
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password in the respective table
+      const updateQuery = `UPDATE ${emailResult.table} SET password = ? WHERE id = ?`;
+      db.query(updateQuery, [hashedPassword, emailResult.id], (updateErr) => {
+        if (updateErr) {
+          return res.status(500).json({ error: 'Error updating password', details: updateErr.message });
+        }
+
+        res.status(200).json({ message: 'Password updated successfully' });
+      });
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+});
+
 
 //profile update
 //curl -X PUT http://localhost:4000/auto/update-profile -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjcsImVtYWlsIjoidHVzaGFyLmNvbSIsInVzZXJ0eXBlIjoidXNlciIsImlhdCI6MTczOTQ2NzI2OCwiZXhwIjoxNzM5NDcwODY4fQ.cgecdgg2EBAsxAl0kxThTj52AZUk4VPBunpYzS6q9lk" -F "name=John Doe" -F "phone=1234567890" -F "address=123 Main St, City, Country" -F "profilePhoto=@C:/Project/CampusEats/backend/images/1737258735376.png"
@@ -229,15 +447,15 @@ router.get('/profile', verifyToken, (req, res) => {
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'sheremyfoodprofile',  
-    format: async (req, file) => 'png', 
+    folder: 'sheremyfoodprofile',
+    format: async (req, file) => 'png',
   },
 });
 
 const upload = multer({ storage });
 
 router.put('/update-profile', verifyToken, upload.single('profilePhoto'), async (req, res) => {
-  const { name, phone, address} = req.body;
+  const { name, phone, address } = req.body;
   const userId = req.user.userId; // From the verified token
   const userTypeFromToken = req.user.usertype; // User type from JWT
   console.log(name, phone, address, req.file);
