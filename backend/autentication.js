@@ -111,7 +111,7 @@ router.post('/signup', async (req, res) => {
 
 
 //login
-//curl -X POST http://localhost:4000/auto/login -H "Content-Type: application/json" -d "{\"email\": \"tushar.com\", \"password\": \"12345678\"}"
+//curl -X POST http://localhost:4000/auto/login -H "Content-Type: application/json" -d "{\"email\": \"tusharsaini.in@gmail.com\", \"password\": \"12345678\"}"
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -187,7 +187,7 @@ router.post('/login', async (req, res) => {
 });
 
 //profile data
-//curl -X GET http://localhost:4000/auto/profile -H "Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjcsImVtYWlsIjoidHVzaGFyLmNvbSIsInVzZXJ0eXBlIjoidXNlciIsImlhdCI6MTczOTQ2NDA3MywiZXhwIjoxNzM5NDY3NjczfQ.2DcIFmGo8JmRjgb8pTTqbBc8Al4z8PGVWU3BZ73pEKE"
+//curl -X GET http://localhost:4000/auto/profile -H "Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsImVtYWlsIjoidHVzaGFyc2FpbmkuaW5AZ21haWwuY29tIiwidXNlcnR5cGUiOiJ1c2VyIiwiaWF0IjoxNzM5NjMyNDc5LCJleHAiOjE3Mzk2MzYwNzl9.Tu3pVM1APjyDmjFtlZpNXrNhlo2x3lK6Yi84ktYYYy8"
 router.get('/profile', verifyToken, (req, res) => {
   const { userId, usertype } = req.user; // User data comes from the decoded JWT token
 
@@ -442,7 +442,7 @@ router.post('/verify-otp-and-reset-password', async (req, res) => {
 
 
 //profile update
-//curl -X PUT http://localhost:4000/auto/update-profile -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjcsImVtYWlsIjoidHVzaGFyLmNvbSIsInVzZXJ0eXBlIjoidXNlciIsImlhdCI6MTczOTQ2NzI2OCwiZXhwIjoxNzM5NDcwODY4fQ.cgecdgg2EBAsxAl0kxThTj52AZUk4VPBunpYzS6q9lk" -F "name=John Doe" -F "phone=1234567890" -F "address=123 Main St, City, Country" -F "profilePhoto=@C:/Project/CampusEats/backend/images/1737258735376.png"
+//curl -X PUT http://localhost:4000/auto/update-profile -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsImVtYWlsIjoidHVzaGFyc2FpbmkuaW5AZ21haWwuY29tIiwidXNlcnR5cGUiOiJ1c2VyIiwiaWF0IjoxNzM5NjMyNDc5LCJleHAiOjE3Mzk2MzYwNzl9.Tu3pVM1APjyDmjFtlZpNXrNhlo2x3lK6Yi84ktYYYy8" -F "name=John Doe" -F "phone=1234567890" -F "address=123 Main St, City, Country" -F "profilePhoto=@C:/Project/CampusEats/backend/images/1737258735376.png"
 
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
@@ -457,8 +457,7 @@ const upload = multer({ storage });
 router.put('/update-profile', verifyToken, upload.single('profilePhoto'), async (req, res) => {
   const { name, phone, address } = req.body;
   const userId = req.user.userId; // From the verified token
-  const userTypeFromToken = req.user.usertype; // User type from JWT
-  console.log(name, phone, address, req.file);
+  const userTypeFromToken = req.user.usertype;
 
   if (!name || !phone || !address) {
     return res.status(400).json({ message: 'All fields are required' });
