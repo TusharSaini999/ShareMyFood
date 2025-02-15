@@ -387,7 +387,7 @@ router.post('/send-otp', async (req, res) => {
 });
 
 
-//curl -X POST "http://localhost:4000/auto/verify-otp-and-reset-password" -H "Content-Type: application/json" -d "{\"email\":\"tusharsaini.in@gmail.com\", \"otp\":\"722896\", \"newPassword\":\"12345678\"}"
+//curl -X POST "http://localhost:4000/auto/verify-otp-and-reset-password" -H "Content-Type: application/json" -d "{\"email\":\"tusharsaini.in@gmail.com\", \"otp\":\"934363\", \"newPassword\":\"12345678\"}"
 
 router.post('/verify-otp-and-reset-password', async (req, res) => {
   const { email, otp, newPassword } = req.body;
