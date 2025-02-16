@@ -6,6 +6,7 @@ import {
 import { NavBar } from "./components/nav-bar";
 import Home from "./pages/main-page";
 import { Footer } from "./components/footer";
+import AuthComponent from "./pages/auth";
 
 
 
@@ -16,6 +17,7 @@ function App() {
         <NavBar />
         <Routes>
           <Route path="/" element={<Home />} />       
+          <Route path="/auth" element={<AuthComponent />} />       
         </Routes>
         <Footer />
       </Router>

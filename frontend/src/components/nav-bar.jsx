@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import { motion } from "framer-motion"
 import { NavLink } from "react-router-dom"
 import { Menu, X } from "lucide-react"
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 export function NavBar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -29,13 +30,15 @@ export function NavBar() {
               </motion.div>
             ))}
             
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-[#FF6B35] text-white px-6 py-2 rounded-full hover:bg-[#ff825f] transition-colors"
-            >
-              Register
-            </motion.button>
+            <Link to="/auth">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-[#FF6B35] text-white px-6 py-2 rounded-full hover:bg-[#ff825f] transition-colors"
+              >
+                Login
+              </motion.button>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
@@ -65,9 +68,11 @@ export function NavBar() {
                 {item}
               </NavLink>
             ))}
-            <button className="w-full text-center bg-[#FF6B35] text-white px-6 py-2 rounded-full hover:bg-[#ff825f] transition-colors">
-              Register
-            </button>
+            <Link to="/auth">
+              <button className="w-full text-center bg-[#FF6B35] text-white px-6 py-2 rounded-full hover:bg-[#ff825f] transition-colors">
+              Login
+              </button> 
+            </Link>
           </div>
         </motion.div>
       )}

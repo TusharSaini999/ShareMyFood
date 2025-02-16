@@ -61,7 +61,6 @@ export function TestimonialsSection() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <span className="text-[#FF6B35] font-semibold text-sm tracking-wider uppercase">Testimonials</span>
           <h2 className="mt-2 text-4xl font-bold text-gray-900">What Our Users Say</h2>
         </motion.div>
 
