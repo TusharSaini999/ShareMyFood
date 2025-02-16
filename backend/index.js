@@ -19,9 +19,11 @@ app.use(cors({
 
 app.use(bodyParser.json());
 
-const autentication = require("./autentication");
+const autentication = require('./autentication');
+const topl = require('./nogleader');
 
-app.use("/auto", autentication);
+app.use('/auto', autentication);
+app.use('/top', topl);
 
 
 const PORT = process.env.PORT;

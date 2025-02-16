@@ -10,7 +10,6 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-require("dotenv").config();
 //verfy token
 const verifyToken = (req, res, next) => {
   const token = req.headers['authorization'];
@@ -42,12 +41,12 @@ const verifyToken = (req, res, next) => {
 
 
 // Sign Up API
-//curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"Tushar Saini\",\"email\":\"tusharsaini.in@gmail.com\",\"phone\":\"1234567890\",\"password\":\"12345678\",\"usertype\":\"user\"}"
-//curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"John Doe\",\"email\":\"johndoe@example.com\",\"phone\":\"1234567890\",\"password\":\"password123\",\"usertype\":\"ngo\"}"
+//curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"Tushar Saini\",\"email\":\"tusharsaini.i@gmail.com\",\"phone\":\"1234567890\",\"password\":\"12345678\",\"usertype\":\"user\", \"address\":\"Abcd\"}"
+//curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"John Doe\",\"email\":\"johndoe@example.com\",\"phone\":\"1234567890\",\"password\":\"password123\",\"usertype\":\"ngo\", \"address\":\"Abcd\"}"
 router.post('/signup', async (req, res) => {
-  const { name, email, phone, password, usertype } = req.body;
+  const { name, email, phone, password, usertype, address } = req.body;
 
-  if (!name || !email || !phone || !password || !usertype) {
+  if (!name || !email || !phone || !password || !usertype || !address) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
@@ -83,9 +82,9 @@ router.post('/signup', async (req, res) => {
 
         // Hash password and insert user into the appropriate table
         const hashedPassword = await bcrypt.hash(password, 10);
-        const insertQuery = `INSERT INTO ${table} (name, email, phone, password, usertype) VALUES (?, ?, ?, ?, ?)`;
+        const insertQuery = `INSERT INTO ${table} (name, email, phone, password, usertype, address) VALUES (?, ?, ?, ?, ?, ?)`;
 
-        db.query(insertQuery, [name, email, phone, hashedPassword, usertype], (err, result) => {
+        db.query(insertQuery, [name, email, phone, hashedPassword, usertype, address], (err, result) => {
           if (err) {
             return res.status(500).json({ message: 'Database error', error: err });
           }
@@ -110,8 +109,11 @@ router.post('/signup', async (req, res) => {
 });
 
 
+
 //login
 //curl -X POST http://localhost:4000/auto/login -H "Content-Type: application/json" -d "{\"email\": \"tusharsaini.in@gmail.com\", \"password\": \"12345678\"}"
+//curl -X POST http://localhost:4000/auto/login -H "Content-Type: application/json" -d "{\"email\": \"ngo1@example.com\", \"password\": \"pass1234\"}"
+
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -187,42 +189,99 @@ router.post('/login', async (req, res) => {
 });
 
 //profile data
-//curl -X GET http://localhost:4000/auto/profile -H "Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjgsImVtYWlsIjoidHVzaGFyc2FpbmkuaW5AZ21haWwuY29tIiwidXNlcnR5cGUiOiJ1c2VyIiwiaWF0IjoxNzM5NjMyNDc5LCJleHAiOjE3Mzk2MzYwNzl9.Tu3pVM1APjyDmjFtlZpNXrNhlo2x3lK6Yi84ktYYYy8"
+//curl -X GET http://localhost:4000/auto/profile -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJlbWFpbCI6ImpvaG5kb2VAZXhhbXBsZS5jb20iLCJ1c2VydHlwZSI6Im5nbyIsImlhdCI6MTczOTcxNjY3MCwiZXhwIjoxNzM5NzIwMjcwfQ.g2KqqXH2OM29RhjSOqnU4lSvQRPJYKSMucpMUSum-fI"
+// Profile route with separate queries for NGO and User
 router.get('/profile', verifyToken, (req, res) => {
-  const { userId, usertype } = req.user; // User data comes from the decoded JWT token
+  const { userId, usertype } = req.user;
 
-  // If no userId or usertype, return an error
   if (!userId || !usertype) {
     return res.status(400).json({ message: 'Invalid request. User data is missing.' });
   }
 
-  // Check the usertype to determine which table to query
-  let profileQuery = '';
   if (usertype === 'ngo') {
-    profileQuery = 'SELECT * FROM ngo WHERE id = ?';
+    const ngoQuery = 'SELECT * FROM ngo WHERE id = ?';
+    db.query(ngoQuery, [userId], (err, results) => {
+      if (err) return res.status(500).json({ message: 'Database error', error: err });
+      if (results.length === 0) return res.status(404).json({ message: 'NGO profile not found' });
+
+      const ngo = results[0];
+
+      if (ngo.totaldonecout === 0) {
+        // If totaldonecout is 0, the rank is simply the count of all NGOs
+        const rankQuery = `SELECT COUNT(*) AS total FROM ngo`;
+        db.query(rankQuery, (err, rankResults) => {
+          if (err) return res.status(500).json({ message: 'Error calculating rank', error: err });
+
+          const rank = rankResults[0].total; // The rank for NGOs with 0 donations is the total count of NGOs
+
+          res.status(200).json({
+            message: 'NGO profile fetched successfully',
+            profile: {
+              id: ngo.id,
+              name: ngo.name,
+              email: ngo.email,
+              phone: ngo.phone,
+              address: ngo.address,
+              image: ngo.image,
+              totaldonecout: ngo.totaldonecout,
+              rank: rank
+            }
+          });
+        });
+      } else {
+        // Calculate rank for NGOs with donations
+        const rankQuery = `
+          SELECT (COUNT(*) + 1) AS ngo_rank
+          FROM ngo
+          WHERE totaldonecout > (SELECT totaldonecout FROM ngo WHERE id = ?)
+        `;
+        db.query(rankQuery, [userId], (err, rankResults) => {
+          if (err) return res.status(500).json({ message: 'Error calculating rank', error: err });
+
+          const rank = rankResults[0].ngo_rank;
+
+          res.status(200).json({
+            message: 'NGO profile fetched successfully',
+            profile: {
+              id: ngo.id,
+              name: ngo.name,
+              email: ngo.email,
+              phone: ngo.phone,
+              address: ngo.address,
+              image: ngo.image,
+              totaldonecout: ngo.totaldonecout,
+              rank: rank
+            }
+          });
+        });
+      }
+    });
   } else if (usertype === 'user') {
-    profileQuery = 'SELECT * FROM users WHERE id = ?';
+    const userQuery = 'SELECT * FROM users WHERE id = ?';
+    db.query(userQuery, [userId], (err, results) => {
+      if (err) return res.status(500).json({ message: 'Database error', error: err });
+      if (results.length === 0) return res.status(404).json({ message: 'User profile not found' });
+
+      const user = results[0];
+      res.status(200).json({
+        message: 'User profile fetched successfully',
+        profile: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          address: user.address,
+          image: user.image,
+          usertype: user.usertype
+        }
+      });
+    });
   } else {
     return res.status(400).json({ message: 'Invalid usertype' });
   }
-
-  // Query the appropriate table based on usertype
-  db.query(profileQuery, [userId], (err, results) => {
-    if (err) {
-      return res.status(500).json({ message: 'Database error', error: err });
-    }
-
-    if (results.length === 0) {
-      return res.status(404).json({ message: 'Profile not found' });
-    }
-
-    // Return the profile data
-    res.status(200).json({
-      message: 'Profile fetched successfully',
-      profile: results[0],
-    });
-  });
 });
+
+
 
 //forgat password
 const transporter = nodemailer.createTransport({
@@ -371,7 +430,7 @@ router.post('/send-otp', async (req, res) => {
           </html>
         `
       };
-      
+
 
 
       transporter.sendMail(mailOptions, (error, info) => {
@@ -448,9 +507,15 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'sheremyfoodprofile',
-    format: async (req, file) => 'png',
+    format: async (req, file) => 'webp',  // Use WebP for optimization
+    transformation: [
+      { width: 1000, crop: "scale" },
+      { quality: "auto" },
+      { fetch_format: "auto" }          // Auto format for best performance
+    ]
   },
 });
+
 
 const upload = multer({ storage });
 
@@ -498,5 +563,78 @@ router.put('/update-profile', verifyToken, upload.single('profilePhoto'), async 
   }
 });
 
+
+//contectus 
+//curl -X POST http://localhost:4000/auto/contact -H "Content-Type: application/json" -d "{\"name\":\"Tushar Saini\",\"email\":\"tusharsaini.in@gmail.com\",\"message\":\"I  your SheremyFood platform!\"}" 
+router.post('/contact', (req, res) => {
+  const { name, email, message } = req.body;
+
+  if (!name || !email || !message) {
+    return res.status(400).json({ message: 'All fields are required' });
+  }
+
+  // Store data in database
+  const query = 'INSERT INTO contact_us (name, email, message) VALUES (?, ?, ?)';
+  db.query(query, [name, email, message], (err, result) => {
+    if (err) return res.status(500).json({ message: 'Database error', error: err });
+
+    // Email to user
+    const userMail = {
+      from: process.env.email,
+      to: email,
+      subject: 'Thank you for contacting us!',
+      html: `
+        <div style="background-color: #FF6B35; padding: 20px; font-family: Arial, sans-serif; color: white;">
+          <h1 style="text-align: center; margin-bottom: 20px;">Thank You for Contacting Us!</h1>
+          <p style="font-size: 16px;">Hi <strong>${name}</strong>,</p>
+          <p>We have received your message:</p>
+          <blockquote style="background-color: white; color: #FF6B35; padding: 15px; border-radius: 8px;">
+            ${message}
+          </blockquote>
+          <p>We will get back to you soon.</p>
+          <p style="margin-top: 20px;">Best regards,</p>
+          <p><strong>ShereMyFood Team</strong></p>
+          <footer style="text-align: center; margin-top: 30px; font-size: 14px;">
+            &copy; 2025 ShereMyFood | All rights reserved.
+          </footer>
+        </div>
+      `
+    };
+
+
+    // Email to admin (your own email)
+    const adminMail = {
+      from: process.env.email,
+      to: process.env.email,
+      subject: 'New Contact Us Submission',
+      html: `
+        <div style="background-color: #FF6B35; padding: 20px; font-family: Arial, sans-serif; color: white;">
+          <h2 style="text-align: center; margin-bottom: 20px;">New Contact Us Submission</h2>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Message:</strong></p>
+          <blockquote style="background-color: white; color: #FF6B35; padding: 15px; border-radius: 8px;">
+            ${message}
+          </blockquote>
+          <p style="margin-top: 20px;">This message was sent from the ShereMyFood Contact Us form.</p>
+          <footer style="text-align: center; margin-top: 30px; font-size: 14px;">
+            &copy; 2025 ShereMyFood | All rights reserved.
+          </footer>
+        </div>
+      `
+    };
+
+
+    transporter.sendMail(userMail, (error, info) => {
+      if (error) return res.status(500).json({ message: 'Failed to send email to user', error });
+
+      transporter.sendMail(adminMail, (err, info) => {
+        if (err) return res.status(500).json({ message: 'Failed to send email to admin', error });
+
+        res.status(200).json({ message: 'Message received, emails sent successfully!' });
+      });
+    });
+  });
+});
 module.exports = router;
 
