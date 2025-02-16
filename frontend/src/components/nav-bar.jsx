@@ -21,7 +21,7 @@ export function NavBar() {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
-            {["Home", "Activities", "NGO Leaderboard", "AI", "About", "Contact"].map((item) => (
+            {["Activities", "NGO Leaderboard", "AI", "About", "Contact"].map((item) => (
               <motion.div key={item} whileHover={{ scale: 1.1 }} className="relative group">
                 <NavLink to={`/${item.toLowerCase()}`} className="text-gray-600 hover:text-[#FF6B35] transition-colors">
                   {item}
