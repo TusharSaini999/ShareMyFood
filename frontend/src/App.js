@@ -9,6 +9,7 @@ import { Footer } from "./components/footer";
 import AuthComponent from "./pages/auth";
 import ContactPage from "./pages/contact";
 import AboutPage from "./pages/about";
+import NGOLeaderboard from "./pages/leaderboard";
 
 
 
@@ -21,7 +22,9 @@ function App() {
           <Route path="/" element={<Home />} />       
           <Route path="/auth" element={<AuthComponent />} />
           <Route path="/contact" element={<ContactPage />} />      
-          <Route path="/about" element={<AboutPage />} />      
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/ngo leaderboard" element={<NGOLeaderboard />} />
+
         </Routes>
         <Footer />
       </Router>
