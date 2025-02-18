@@ -18,13 +18,12 @@ const verifyToken = (req, res, next) => {
     return res.status(403).json({ message: 'No token provided' });
   }
 
-  // Remove the 'Bearer ' part if it exists, so only the token is passed to jwt.verify
   const tokenParts = token.split(' ');
   if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
     return res.status(401).json({ message: 'Unauthorized, Invalid token format' });
   }
 
-  const actualToken = tokenParts[1];  // The token without 'Bearer' prefix
+  const actualToken = tokenParts[1];
 
   jwt.verify(actualToken, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
@@ -34,20 +33,21 @@ const verifyToken = (req, res, next) => {
       return res.status(401).json({ message: 'Unauthorized', error: err });
     }
 
-    req.user = decoded; // Attach the decoded payload to the request object
+    req.user = decoded;
     next();
   });
 };
 
 
 // Sign Up API
-//curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"Tushar Saini\",\"email\":\"tusharsaini.i@gmail.com\",\"phone\":\"1234567890\",\"password\":\"12345678\",\"usertype\":\"user\", \"address\":\"Abcd\"}"
-//curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"John Doe\",\"email\":\"johndoe@example.com\",\"phone\":\"1234567890\",\"password\":\"password123\",\"usertype\":\"ngo\", \"address\":\"Abcd\"}"
-router.post('/signup', async (req, res) => {
-  const { name, email, phone, password, usertype, address } = req.body;
+//curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"Tushar Saini\",\"email\":\"tusharsaini.id@gmail.com\",\"phone\":\"1234567890\",\"password\":\"12345678\",\"usertype\":\"user\", \"address\":\"Abcd\"}"
+//curl -X POST http://localhost:4000/auto/signup -H "Content-Type: application/json" -d "{\"name\":\"John Doe\",\"email\":\"johndoe@example.com\",\"phone\":\"1234567890\",\"password\":\"password123\",\"usertype\":\"ngo\", \"address\":\"Abcd\", \"latitude\":28.7041, \"longitude\":77.1025}"
 
-  if (!name || !email || !phone || !password || !usertype || !address) {
-    return res.status(400).json({ message: 'All fields are required' });
+router.post('/signup', async (req, res) => {
+  const { name, email, phone, password, usertype, address, latitude, longitude } = req.body;
+
+  if (!name || !email || !phone || !password || !usertype || !address || (usertype.toLowerCase() === 'ngo' && (!latitude || !longitude))) {
+    return res.status(400).json({ message: 'All fields are required, including latitude and longitude for NGO' });
   }
 
   if (password.length < 8) {
@@ -55,45 +55,29 @@ router.post('/signup', async (req, res) => {
   }
 
   try {
-    // Determine the table based on usertype
     const table = usertype.toLowerCase() === 'ngo' ? 'ngo' : 'users';
 
-    // Check if user already exists in 'users' table
     const checkUsersQuery = 'SELECT * FROM users WHERE email = ?';
     db.query(checkUsersQuery, [email], async (err, userResults) => {
-      if (err) {
-        return res.status(500).json({ message: 'Database error', error: err });
-      }
+      if (err) return res.status(500).json({ message: 'Database error', error: err });
+      if (userResults.length > 0) return res.status(400).json({ message: 'User already exists in users table' });
 
-      if (userResults.length > 0) {
-        return res.status(400).json({ message: 'User already exists in users table' });
-      }
-
-      // Check if user already exists in 'ngo' table
       const checkNgoQuery = 'SELECT * FROM ngo WHERE email = ?';
       db.query(checkNgoQuery, [email], async (err, ngoResults) => {
-        if (err) {
-          return res.status(500).json({ message: 'Database error', error: err });
-        }
+        if (err) return res.status(500).json({ message: 'Database error', error: err });
+        if (ngoResults.length > 0) return res.status(400).json({ message: 'User already exists in NGO table' });
 
-        if (ngoResults.length > 0) {
-          return res.status(400).json({ message: 'User already exists in NGO table' });
-        }
-
-        // Hash password and insert user into the appropriate table
         const hashedPassword = await bcrypt.hash(password, 10);
-        const insertQuery = `INSERT INTO ${table} (name, email, phone, password, usertype, address) VALUES (?, ?, ?, ?, ?, ?)`;
+        const insertQuery = `INSERT INTO ${table} (name, email, phone, password, usertype, address${usertype.toLowerCase() === 'ngo' ? ', latitude, longitude' : ''}) VALUES (?, ?, ?, ?, ?, ?${usertype.toLowerCase() === 'ngo' ? ', ?, ?' : ''})`;
 
-        db.query(insertQuery, [name, email, phone, hashedPassword, usertype, address], (err, result) => {
-          if (err) {
-            return res.status(500).json({ message: 'Database error', error: err });
-          }
+        const values = usertype.toLowerCase() === 'ngo' ? [name, email, phone, hashedPassword, usertype, address, latitude, longitude] : [name, email, phone, hashedPassword, usertype, address];
 
-          // Create JWT token after user registration
+        db.query(insertQuery, values, (err, result) => {
+          if (err) return res.status(500).json({ message: 'Database error', error: err });
+
           const payload = { userId: result.insertId, email, usertype };
           const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-          // Send response with the token
           res.status(201).json({
             message: 'User registered successfully',
             userId: result.insertId,
@@ -110,8 +94,9 @@ router.post('/signup', async (req, res) => {
 
 
 
+
 //login
-//curl -X POST http://localhost:4000/auto/login -H "Content-Type: application/json" -d "{\"email\": \"tusharsaini.in@gmail.com\", \"password\": \"12345678\"}"
+//curl -X POST http://localhost:4000/auto/login -H "Content-Type: application/json" -d "{\"email\": \"tusharsaini.id@gmail.com\", \"password\": \"12345678\"}"
 //curl -X POST http://localhost:4000/auto/login -H "Content-Type: application/json" -d "{\"email\": \"ngo1@example.com\", \"password\": \"pass1234\"}"
 
 router.post('/login', async (req, res) => {
@@ -122,11 +107,11 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    // Determine the table to check based on the email
+    
     const checkNgoQuery = 'SELECT * FROM ngo WHERE email = ?';
     const checkUserQuery = 'SELECT * FROM users WHERE email = ?';
 
-    // Check if the user exists in 'ngo' table first
+    
     db.query(checkNgoQuery, [email], async (err, ngoResults) => {
       if (err) {
         return res.status(500).json({ message: 'Database error', error: err });
@@ -135,13 +120,13 @@ router.post('/login', async (req, res) => {
       if (ngoResults.length > 0) {
         const ngo = ngoResults[0];
 
-        // Compare the password with the stored hash
+        
         const match = await bcrypt.compare(password, ngo.password);
         if (!match) {
           return res.status(400).json({ message: 'Invalid email or password' });
         }
 
-        // Create JWT token for ngo
+        
         const payload = { userId: ngo.id, email, usertype: 'ngo' };
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
 
@@ -153,7 +138,7 @@ router.post('/login', async (req, res) => {
         });
       }
 
-      // If not found in 'ngo' table, check in 'users' table
+      
       db.query(checkUserQuery, [email], async (err, userResults) => {
         if (err) {
           return res.status(500).json({ message: 'Database error', error: err });
@@ -162,13 +147,13 @@ router.post('/login', async (req, res) => {
         if (userResults.length > 0) {
           const user = userResults[0];
 
-          // Compare the password with the stored hash
+          
           const match = await bcrypt.compare(password, user.password);
           if (!match) {
             return res.status(400).json({ message: 'Invalid email or password' });
           }
 
-          // Create JWT token for user
+          
           const payload = { userId: user.id, email, usertype: 'user' };
           const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
 
@@ -189,7 +174,7 @@ router.post('/login', async (req, res) => {
 });
 
 //profile data
-//curl -X GET http://localhost:4000/auto/profile -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIzLCJlbWFpbCI6ImpvaG5kb2VAZXhhbXBsZS5jb20iLCJ1c2VydHlwZSI6Im5nbyIsImlhdCI6MTczOTcxNjY3MCwiZXhwIjoxNzM5NzIwMjcwfQ.g2KqqXH2OM29RhjSOqnU4lSvQRPJYKSMucpMUSum-fI"
+//curl -X GET http://localhost:4000/auto/profile -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjI0LCJlbWFpbCI6ImpvaG5kb2VAZXhhbXBsZS5jb20iLCJ1c2VydHlwZSI6Im5nbyIsImlhdCI6MTczOTg4NDcxOSwiZXhwIjoxNzM5ODg4MzE5fQ.nUk7N9d0ktMXwqH2CeLqiw43Xq_jLD5JLBWtSehpyqs"
 // Profile route with separate queries for NGO and User
 router.get('/profile', verifyToken, (req, res) => {
   const { userId, usertype } = req.user;
@@ -207,12 +192,11 @@ router.get('/profile', verifyToken, (req, res) => {
       const ngo = results[0];
 
       if (ngo.totaldonecout === 0) {
-        // If totaldonecout is 0, the rank is simply the count of all NGOs
         const rankQuery = `SELECT COUNT(*) AS total FROM ngo`;
         db.query(rankQuery, (err, rankResults) => {
           if (err) return res.status(500).json({ message: 'Error calculating rank', error: err });
 
-          const rank = rankResults[0].total; // The rank for NGOs with 0 donations is the total count of NGOs
+          const rank = rankResults[0].total;
 
           res.status(200).json({
             message: 'NGO profile fetched successfully',
@@ -224,12 +208,13 @@ router.get('/profile', verifyToken, (req, res) => {
               address: ngo.address,
               image: ngo.image,
               totaldonecout: ngo.totaldonecout,
-              rank: rank
+              rank: rank,
+              latitude: ngo.latitude,      
+              longitude: ngo.longitude     
             }
           });
         });
       } else {
-        // Calculate rank for NGOs with donations
         const rankQuery = `
           SELECT (COUNT(*) + 1) AS ngo_rank
           FROM ngo
@@ -250,7 +235,9 @@ router.get('/profile', verifyToken, (req, res) => {
               address: ngo.address,
               image: ngo.image,
               totaldonecout: ngo.totaldonecout,
-              rank: rank
+              rank: rank,
+              latitude: ngo.latitude,      
+              longitude: ngo.longitude     
             }
           });
         });
@@ -280,6 +267,7 @@ router.get('/profile', verifyToken, (req, res) => {
     return res.status(400).json({ message: 'Invalid usertype' });
   }
 });
+
 
 
 
@@ -332,7 +320,7 @@ router.post('/send-otp', async (req, res) => {
   }
 
   try {
-    // Check if email exists
+    
     const emailExists = await checkEmailInTables(email);
     if (!emailExists) {
       return res.status(404).json({ error: 'Email not found in ngo or users table' });
@@ -340,7 +328,7 @@ router.post('/send-otp', async (req, res) => {
 
     const otp = generateOTP();
 
-    // Save OTP to Database
+    
     const query = `
       INSERT INTO otp_verification (email, otp) 
       VALUES (?, ?) 
@@ -454,13 +442,13 @@ router.post('/verify-otp-and-reset-password', async (req, res) => {
     return res.status(400).json({ error: 'Email, OTP, and new password are required' });
   }
 
-  // Check if the new password is at least 8 characters long
+ 
   if (newPassword.length < 8) {
     return res.status(400).json({ error: 'New password must be at least 8 characters long' });
   }
 
   try {
-    // Check OTP validity
+    
     const otpQuery = `
       SELECT * FROM otp_verification 
       WHERE email = ? AND otp = ? 
@@ -475,16 +463,16 @@ router.post('/verify-otp-and-reset-password', async (req, res) => {
         return res.status(400).json({ error: 'Invalid or expired OTP' });
       }
 
-      // Check email in tables
+      
       const emailResult = await checkEmailInTables(email);
       if (!emailResult) {
         return res.status(404).json({ error: 'Email not found in ngo or users table' });
       }
 
-      // Hash the new password
+      
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-      // Update password in the respective table
+      
       const updateQuery = `UPDATE ${emailResult.table} SET password = ? WHERE id = ?`;
       db.query(updateQuery, [hashedPassword, emailResult.id], (updateErr) => {
         if (updateErr) {
@@ -507,11 +495,11 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'sheremyfoodprofile',
-    format: async (req, file) => 'webp',  // Use WebP for optimization
+    format: async (req, file) => 'webp',  
     transformation: [
       { width: 1000, crop: "scale" },
       { quality: "auto" },
-      { fetch_format: "auto" }          // Auto format for best performance
+      { fetch_format: "auto" }          
     ]
   },
 });
@@ -520,28 +508,34 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage });
 
 router.put('/update-profile', verifyToken, upload.single('profilePhoto'), async (req, res) => {
-  const { name, phone, address } = req.body;
-  const userId = req.user.userId; // From the verified token
+  const { name, phone, address, latitude, longitude } = req.body;  
+  const userId = req.user.userId;
   const userTypeFromToken = req.user.usertype;
 
-  if (!name || !phone || !address) {
+  if (!name || !phone || !address || (userTypeFromToken === 'ngo' && (!latitude || !longitude))) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
   try {
-    // If profile photo is provided, Cloudinary will handle the upload
-    let profileImage = req.file ? req.file.path : null; // If file is uploaded, get Cloudinary URL
+    let profileImage = req.file ? req.file.path : null;
 
-    // Update user information based on user type (users, vendors, delivery boys)
     let query = '';
     let params = [];
+    const table = userTypeFromToken === 'ngo' ? 'ngo' : 'users';
 
-    const table = userTypeFromToken === 'ngo' ? 'ngo' : 'users';  // Select the correct table based on userType
-    query = `
-      UPDATE ${table} 
-      SET name = ?, phone = ?, address = ?, image = COALESCE(?, image)
-      WHERE id = ?`;
-    params = [name, phone, address, profileImage, userId];
+    if (userTypeFromToken === 'ngo') {
+      query = `
+        UPDATE ${table} 
+        SET name = ?, phone = ?, address = ?, latitude = ?, longitude = ?, image = COALESCE(?, image)
+        WHERE id = ?`;
+      params = [name, phone, address, latitude, longitude, profileImage, userId];
+    } else {
+      query = `
+        UPDATE ${table} 
+        SET name = ?, phone = ?, address = ?, image = COALESCE(?, image)
+        WHERE id = ?`;
+      params = [name, phone, address, profileImage, userId];
+    }
 
     const [response] = await db.promise().query(query, params);
 
@@ -556,12 +550,14 @@ router.put('/update-profile', verifyToken, upload.single('profilePhoto'), async 
       phone: phone,
       address: address,
       profilePhoto: profileImage,
+      ...(userTypeFromToken === 'ngo' && { latitude, longitude })
     });
   } catch (error) {
     console.error('Error updating profile:', error.message);
     return res.status(500).json({ message: 'Failed to update profile', error });
   }
 });
+
 
 
 //contectus 
@@ -572,13 +568,11 @@ router.post('/contact', (req, res) => {
   if (!name || !email || !message) {
     return res.status(400).json({ message: 'All fields are required' });
   }
-
-  // Store data in database
   const query = 'INSERT INTO contact_us (name, email, message) VALUES (?, ?, ?)';
   db.query(query, [name, email, message], (err, result) => {
     if (err) return res.status(500).json({ message: 'Database error', error: err });
 
-    // Email to user
+   
     const userMail = {
       from: process.env.email,
       to: email,
@@ -602,7 +596,7 @@ router.post('/contact', (req, res) => {
     };
 
 
-    // Email to admin (your own email)
+    
     const adminMail = {
       from: process.env.email,
       to: process.env.email,
@@ -636,5 +630,41 @@ router.post('/contact', (req, res) => {
     });
   });
 });
-module.exports = router;
 
+//Toggle the Current
+//curl -X PATCH http://localhost:4000/auto/status/24 -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjI0LCJlbWFpbCI6ImpvaG5kb2VAZXhhbXBsZS5jb20iLCJ1c2VydHlwZSI6Im5nbyIsImlhdCI6MTczOTg4NDcxOSwiZXhwIjoxNzM5ODg4MzE5fQ.nUk7N9d0ktMXwqH2CeLqiw43Xq_jLD5JLBWtSehpyqs"
+
+router.patch('/status/:id', verifyToken, (req, res) => {
+  const ngoId = req.params.id;
+
+  // Query to get the current status of the NGO
+  const query = 'SELECT status FROM ngo WHERE id = ?';
+
+  db.query(query, [ngoId], (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database query error' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ message: 'NGO not found' });
+    }
+
+    const currentStatus = result[0].status;
+    const newStatus = currentStatus === 'online' ? 'offline' : 'online';
+
+    // Update the status in the database
+    const updateQuery = 'UPDATE ngo SET status = ? WHERE id = ?';
+
+    db.query(updateQuery, [newStatus, ngoId], (err, updateResult) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error updating status' });
+      }
+
+      res.status(200).json({
+        message: `NGO status updated to ${newStatus}`,
+        status: newStatus,
+      });
+    });
+  });
+});
+module.exports = router;

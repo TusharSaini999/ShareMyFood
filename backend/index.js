@@ -21,10 +21,11 @@ app.use(bodyParser.json());
 
 const autentication = require('./autentication');
 const topl = require('./nogleader');
+const don = require('./donation');
 
 app.use('/auto', autentication);
 app.use('/top', topl);
-
+app.use('/don', don);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
