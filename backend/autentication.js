@@ -97,7 +97,7 @@ router.post('/signup', async (req, res) => {
 
 //login
 //curl -X POST http://localhost:4000/auto/login -H "Content-Type: application/json" -d "{\"email\": \"tusharsaini.id@gmail.com\", \"password\": \"12345678\"}"
-//curl -X POST http://localhost:4000/auto/login -H "Content-Type: application/json" -d "{\"email\": \"ngo1@example.com\", \"password\": \"pass1234\"}"
+//curl -X POST http://localhost:4000/auto/login -H "Content-Type: application/json" -d "{\"email\": \"contact@careforall.org\", \"password\": \"12345678\"}"
 
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
@@ -311,7 +311,7 @@ function checkEmailInTables(email) {
   });
 }
 
-//curl -X POST "http://localhost:4000/auto/send-otp" -H "Content-Type: application/json" -d "{\"email\":\"tusharsaini.in@gmail.com\"}"
+//curl -X POST "http://localhost:4000/auto/send-otp" -H "Content-Type: application/json" -d "{\"email\":\"contact@careforall.org\"}"
 
 router.post('/send-otp', async (req, res) => {
   const { email } = req.body;
@@ -434,7 +434,7 @@ router.post('/send-otp', async (req, res) => {
 });
 
 
-//curl -X POST "http://localhost:4000/auto/verify-otp-and-reset-password" -H "Content-Type: application/json" -d "{\"email\":\"tusharsaini.in@gmail.com\", \"otp\":\"934363\", \"newPassword\":\"12345678\"}"
+//curl -X POST "http://localhost:4000/auto/verify-otp-and-reset-password" -H "Content-Type: application/json" -d "{\"email\":\"contact@careforall.org\", \"otp\":\"627603\", \"newPassword\":\"12345678\"}"
 
 router.post('/verify-otp-and-reset-password', async (req, res) => {
   const { email, otp, newPassword } = req.body;
