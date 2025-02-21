@@ -4,23 +4,23 @@ const cors = require("cors");
 const http = require("http");
 const socketIo = require("socket.io");
 const db = require("./db");
-const cron = require("node-cron"); // Cron job for automatic reassignment
+const cron = require("node-cron"); 
 require("dotenv").config();
-
+const { findNearbyNGOs } = require("./ngonerby");
 const app = express();
-const server = http.createServer(app); // Create HTTP server for WebSocket support
+const server = http.createServer(app); 
 const io = socketIo(server, {
     cors: {
-        origin: "*", // Adjust for security in production
+        origin: "*", 
         methods: ["GET", "POST"]
     }
 });
 
-global.io = io; // Make `io` globally accessible
+global.io = io;
 
 const allowedOrigins = ["http://localhost:3000"];
 
-// CORS Middleware
+
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin || allowedOrigins.includes(origin)) {
@@ -33,7 +33,7 @@ app.use(cors({
 
 app.use(bodyParser.json());
 
-// Import Routes
+
 const authentication = require("./autentication");
 const topl = require("./nogleader");
 const don = require("./donation");
@@ -52,16 +52,16 @@ io.on("connection", (socket) => {
 
 
 cron.schedule("* * * * *", async () => {
-  console.log("🔄 Checking for pending donations that need reassignment...");
+  console.log("Checking for pending donations that need reassignment...");
 
   try {
-      // Fetch pending donations that have NOT been reassigned yet and are older than 5 minutes
+      
       const pendingDonations = await new Promise((resolve, reject) => {
           db.query(
               `SELECT id, latitude, longitude, ngo_assigned FROM donation_requests 
                WHERE status = 'pending' 
                AND TIMESTAMPDIFF(MINUTE, created_at, NOW()) >= 5
-               AND reassigned = 0`,  // Ensure reassignment happens only once
+               AND reassigned = 0`, 
               (err, res) => {
                   if (err) reject(err);
                   else resolve(res);
@@ -70,18 +70,18 @@ cron.schedule("* * * * *", async () => {
       });
 
       if (pendingDonations.length === 0) {
-          console.log("✅ No donations need reassignment.");
+          console.log("No donations need reassignment.");
           return;
       }
 
       for (const donation of pendingDonations) {
-          console.log(`♻️ Reassigning donation ID: ${donation.id}`);
+          console.log(`Reassigning donation ID: ${donation.id}`);
 
-          // Find 5 nearby NGOs, excluding the initially assigned NGO
+         
           const nearbyNGOs = await findNearbyNGOs(donation.latitude, donation.longitude);
           const reassignedNGOs = nearbyNGOs
-              .filter((ngo) => ngo.id !== donation.ngo_assigned) // Exclude the original NGO
-              .slice(0, 5) // Get only the top 5
+              .filter((ngo) => ngo.id !== donation.ngo_assigned)
+              .slice(0, 5) 
               .map((ngo) => ngo.id);
 
           if (reassignedNGOs.length > 0) {
@@ -98,11 +98,11 @@ cron.schedule("* * * * *", async () => {
                   });
               }
 
-              // Update the donation request with the new NGO assignment and mark as reassigned
+              
               await new Promise((resolve, reject) => {
                   db.query(
                       `UPDATE donation_requests SET ngo_assigned = ?, status = 'pending', reassigned = 1 WHERE id = ?`, 
-                      [reassignedNGOs[0], donation.id], // Assign the first NGO from the new list
+                      [reassignedNGOs[0], donation.id],
                       (err, res) => {
                           if (err) reject(err);
                           else resolve(res);
@@ -110,16 +110,16 @@ cron.schedule("* * * * *", async () => {
                   );
               });
 
-              console.log(`✅ Successfully reassigned NGOs for donation ID: ${donation.id}`);
+              console.log(`Successfully reassigned NGOs for donation ID: ${donation.id}`);
 
-              // Notify the newly assigned NGOs via WebSocket
+              
               io.emit("reassignDonationRequest", { donationId: donation.id, reassignedNGOs });
           } else {
-              console.log(`❌ No available NGOs for reassignment for donation ID: ${donation.id}`);
+              console.log(`No available NGOs for reassignment for donation ID: ${donation.id}`);
           }
       }
   } catch (error) {
-      console.error("❌ Error during NGO reassignment:", error);
+      console.error("Error during NGO reassignment:", error);
   }
 });
 
@@ -128,5 +128,5 @@ cron.schedule("* * * * *", async () => {
 // Start Server
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
 });
