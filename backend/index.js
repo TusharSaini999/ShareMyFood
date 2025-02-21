@@ -42,7 +42,6 @@ app.use("/auto", authentication);
 app.use("/top", topl);
 app.use("/don", don);
 
-// WebSocket Connection
 io.on("connection", (socket) => {
     console.log("A user connected:", socket.id);
 
@@ -51,71 +50,7 @@ io.on("connection", (socket) => {
     });
 });
 
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-const findNearbyNGOs = async (lat, lon) => {
-  let radius = 30;
-  let distance;
-  let NGOs = [];
 
-  const query = 'SELECT * FROM ngo';
-
-  return new Promise((resolve, reject) => {
-      db.query(query, (err, ngos) => {
-          if (err) {
-              reject('Error fetching NGOs from the database: ' + err);
-          } else {
-              let foundNGOs = [];
-
-
-              for (const ngo of ngos) {
-                  distance = calculateDistance(lat, lon, ngo.latitude, ngo.longitude);
-
-
-                  if (distance <= radius && ngo.status === 'online') {
-                      ngo.distance = distance;
-                      foundNGOs.push(ngo);
-                  }
-              }
-
-
-              while (foundNGOs.length === 0 && radius <= 400) {
-                  radius *= 2;
-
-
-                  for (const ngo of ngos) {
-                      distance = calculateDistance(lat, lon, ngo.latitude, ngo.longitude);
-
-
-                      if (distance <= radius && ngo.status === 'online') {
-                          ngo.distance = distance;
-                          foundNGOs.push(ngo);
-                      }
-                  }
-              }
-
-
-              foundNGOs.sort((a, b) => a.distance - b.distance);
-
-              if (foundNGOs.length > 0) {
-                  resolve(foundNGOs);
-              } else {
-                  reject('No online NGOs found within the extended search radius');
-              }
-          }
-      });
-  });
-};
-
-// Scheduled Cron Job to Reassign NGOs for Pending Donations
 cron.schedule("* * * * *", async () => {
   console.log("🔄 Checking for pending donations that need reassignment...");
 
