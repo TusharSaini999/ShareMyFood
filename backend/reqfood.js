@@ -246,8 +246,8 @@ router.get("/user-food-requests", verifyToken, async (req, res) => {
 //curl -X POST "http://localhost:4000/req/complete-food-request" -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjI2LCJlbWFpbCI6ImNvbnRhY3RAY2FyZWZvcmFsbC5vcmciLCJ1c2VydHlwZSI6Im5nbyIsImlhdCI6MTc0MDIzMzk1MSwiZXhwIjoxNzQwMjM3NTUxfQ.tA9Q1QzNeJ2hBBdmNmEzLZ_nuIp70L1wR6aKiLI_LFo" -H "Content-Type: application/json" -d "{\"food_request_id\":1}"
 router.post("/complete-food-request", verifyToken, async (req, res) => {
     try {
-        const { userId, usertype } = req.user; 
-        const { food_request_id } = req.body; 
+        const { userId, usertype } = req.user;
+        const { food_request_id } = req.body;
 
         if (usertype !== "ngo") {
             return res.status(403).json({ message: "Access denied. Only NGOs can complete food requests." });
@@ -276,7 +276,15 @@ router.post("/complete-food-request", verifyToken, async (req, res) => {
                     return res.status(500).json({ message: "Error updating food request status", error: err });
                 }
 
-                res.status(200).json({ message: "Food request marked as completed successfully", food_request_id });
+                const updateNgoDonationCount = `UPDATE ngo SET totaldonecout = totaldonecout + 1 WHERE id = ?`;
+
+                db.query(updateNgoDonationCount, [userId], (err) => {
+                    if (err) {
+                        return res.status(500).json({ message: "Error updating NGO donation count", error: err });
+                    }
+
+                    res.status(200).json({ message: "Food request marked as completed successfully", food_request_id });
+                });
             });
         });
 
