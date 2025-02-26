@@ -10,6 +10,8 @@ import AuthComponent from "./pages/auth";
 import ContactPage from "./pages/contact";
 import AboutPage from "./pages/about";
 import NGOLeaderboard from "./pages/leaderboard";
+import NGODashboard from "./pages/ngo_dashboard";
+import NGOSettings from "./pages/ngo_settings";
 
 
 
@@ -24,6 +26,8 @@ function App() {
           <Route path="/contact" element={<ContactPage />} />      
           <Route path="/about" element={<AboutPage />} />
           <Route path="/ngo leaderboard" element={<NGOLeaderboard />} />
+          <Route path="/ngo/dashboard" element={<NGODashboard />} />
+          <Route path="/ngo/settings" element={<NGOSettings />} />
 
         </Routes>
         <Footer />
